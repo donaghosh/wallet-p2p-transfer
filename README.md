@@ -4,7 +4,10 @@ A small wallet service with peer-to-peer transfers, built to stay **correct unde
 concurrency and failure**. Money is integer **paise** end to end (never floats, never
 decimal rupees). Correctness is enforced in Postgres, not in application code.
 
-- **Live URL:** _TBD (filled after deploy — see [Deploy](#deploy))_
+- **Live URL:** https://wallet-service-wl3z.onrender.com
+  ([health](https://wallet-service-wl3z.onrender.com/actuator/health) ·
+  [metrics](https://wallet-service-wl3z.onrender.com/actuator/prometheus)) —
+  free Render instance; first request after idle cold-starts (slow, then fast).
 - **Stack:** Java 21, Spring Boot 3.4, Postgres 16, Flyway, Micrometer/Prometheus
 - **Design notes & reasoning:** [WRITEUP.md](./WRITEUP.md)
 
