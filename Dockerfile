@@ -21,5 +21,5 @@ EXPOSE 8080
 # Respect container memory limits (important on 512MB free tiers).
 ENV JAVA_OPTS="-XX:MaxRAMPercentage=75"
 HEALTHCHECK --interval=15s --timeout=3s --start-period=45s --retries=5 \
-    CMD curl -fsS http://localhost:8080/actuator/health/liveness || exit 1
+    CMD curl -fsS "http://localhost:${PORT:-8080}/actuator/health/liveness" || exit 1
 ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]

@@ -5,7 +5,9 @@ spring:
     property-naming-strategy: SNAKE_CASE
     default-property-inclusion: non_null
   datasource:
-    url: ${DB_URL:jdbc:postgresql://localhost:5432/wallet}
+    # DB_URL wins if set (docker-compose). Otherwise the JDBC URL is built from parts,
+    # which is how the Render blueprint wires the managed Postgres (host/port/name).
+    url: ${DB_URL:jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:wallet}}
     username: ${DB_USER:wallet}
     password: ${DB_PASSWORD:wallet}
   jpa:

@@ -1,0 +1,40 @@
+# Render blueprint: one web service (Docker) + one free managed Postgres.
+# Deploy: Render dashboard -> New -> Blueprint -> pick this repo -> Apply.
+# Render sets PORT automatically; the app reads it. DB connection parts come from
+# the managed database below and are assembled into a JDBC URL by application.yml.
+databases:
+  - name: wallet-db
+    plan: free
+    databaseName: wallet
+    user: wallet
+
+services:
+  - type: web
+    name: wallet-service
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /actuator/health
+    envVars:
+      - key: DB_HOST
+        fromDatabase:
+          name: wallet-db
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: wallet-db
+          property: port
+      - key: DB_NAME
+        fromDatabase:
+          name: wallet-db
+          property: database
+      - key: DB_USER
+        fromDatabase:
+          name: wallet-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: wallet-db
+          property: password
+      - key: JAVA_OPTS
+        value: "-XX:MaxRAMPercentage=75"
