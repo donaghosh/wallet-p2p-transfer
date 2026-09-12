@@ -1,0 +1,10 @@
+target/
+.git/
+.idea/
+*.iml
+.vscode/
+.DS_Store
+# Exercise materials — never copy into the image
+01-wallet-transfer-exercise.md
+01-wallet-transfer-RUBRIC.md
+R2-exercise-bank.pdf
