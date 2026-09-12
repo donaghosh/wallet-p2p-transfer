@@ -82,10 +82,11 @@ export DB_URL=jdbc:postgresql://localhost:5432/wallet DB_USER=wallet DB_PASSWORD
 ## Test
 
 Integration tests use **Testcontainers** (real Postgres — H2 would not reproduce
-row-locking / `ON CONFLICT` semantics), so a container runtime must be running.
+row-locking / `ON CONFLICT` semantics), so a container runtime must be running. They are
+`*IT` tests run by the failsafe plugin:
 
 ```bash
-mvn test
+mvn verify
 ```
 
 The suite includes the three concurrency gates:
