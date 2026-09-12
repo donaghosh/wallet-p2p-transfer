@@ -35,7 +35,7 @@ Observability:
 | Path | Purpose |
 |---|---|
 | `GET /actuator/health` | Health (liveness/readiness groups enabled). |
-| `GET /actuator/prometheus` | Prometheus metrics: request rate, latency, errors, plus domain counters `wallet_transfers_created_total`, `wallet_transfers_declined_total`, `wallet_transfers_idempotent_replay_total`. |
+| `GET /actuator/prometheus` | Prometheus metrics: request rate, latency, errors, plus domain counters `wallet_transfers_succeeded_total`, `wallet_transfers_declined_total`, `wallet_transfers_idempotent_replay_total`. |
 
 Every request gets an `X-Correlation-Id` (generated or echoed from the request header),
 threaded through structured JSON logs and returned in the response header.

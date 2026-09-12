@@ -128,6 +128,29 @@
                     </excludes>
                 </configuration>
             </plugin>
+            <!-- Run *IT integration tests (Testcontainers) in the verify phase. -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-failsafe-plugin</artifactId>
+                <configuration>
+                    <environmentVariables>
+                        <!-- Pin a Docker API version supported by modern engines (>=1.40);
+                             avoids the client defaulting to a too-old version. -->
+                        <DOCKER_API_VERSION>1.44</DOCKER_API_VERSION>
+                        <!-- Reaper mounts the docker socket; skip it for portability across
+                             Docker Desktop socket paths. Containers stop on JVM exit. -->
+                        <TESTCONTAINERS_RYUK_DISABLED>true</TESTCONTAINERS_RYUK_DISABLED>
+                    </environmentVariables>
+                </configuration>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>integration-test</goal>
+                            <goal>verify</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>

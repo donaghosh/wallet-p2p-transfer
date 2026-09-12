@@ -11,12 +11,15 @@ import org.springframework.stereotype.Component;
 @Component
 public class DomainMetrics {
 
-    private final Counter transfersCreated;
+    private final Counter transfersSucceeded;
     private final Counter transfersDeclinedInsufficientFunds;
     private final Counter idempotentReplays;
 
     public DomainMetrics(MeterRegistry registry) {
-        this.transfersCreated = Counter.builder("wallet.transfers.created")
+        // Named "succeeded" rather than "created": a Prometheus counter name ending in
+        // "created" collides with the reserved _created (creation-timestamp) suffix and is
+        // dropped from exposition. This counter tracks newly created + succeeded transfers.
+        this.transfersSucceeded = Counter.builder("wallet.transfers.succeeded")
                 .description("Transfers newly created and succeeded")
                 .register(registry);
         this.transfersDeclinedInsufficientFunds = Counter.builder("wallet.transfers.declined")
@@ -28,8 +31,8 @@ public class DomainMetrics {
                 .register(registry);
     }
 
-    public void transferCreated() {
-        transfersCreated.increment();
+    public void transferSucceeded() {
+        transfersSucceeded.increment();
     }
 
     public void transferDeclinedInsufficientFunds() {

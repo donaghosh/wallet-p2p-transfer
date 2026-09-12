@@ -28,18 +28,18 @@ public interface WalletRepository extends JpaRepository<Wallet, Long> {
     int insertIfAbsent(@Param("userId") String userId);
 
     /**
-     * Locks both wallet rows FOR UPDATE in ascending id order. Acquiring the two locks in a
-     * deterministic (sorted) order in every transfer is what makes A&rarr;B and B&rarr;A
-     * safe to run concurrently without deadlocking. Returns the ids that actually exist, so
-     * the caller can reject a transfer that names a non-existent wallet.
+     * Locks a single wallet row FOR UPDATE. Returns the id if the wallet exists, empty
+     * otherwise (so the caller can reject a transfer naming a non-existent wallet).
+     *
+     * <p>Callers MUST invoke this for the two wallets of a transfer in ascending id order.
+     * A single {@code IN (...) ORDER BY id FOR UPDATE} does NOT work: Postgres acquires
+     * FOR UPDATE locks in scan/physical order, not ORDER BY order, so overlapping wallet
+     * pairs could lock in inconsistent orders and deadlock. Two sequential single-row locks
+     * in ascending id order give a deterministic global lock order — the deadlock-free
+     * guarantee for concurrent A&rarr;B and B&rarr;A transfers.
      */
-    @Query(value = """
-            SELECT id FROM wallets
-            WHERE id IN (:firstId, :secondId)
-            ORDER BY id
-            FOR UPDATE
-            """, nativeQuery = true)
-    List<Long> lockWalletsInOrder(@Param("firstId") long firstId, @Param("secondId") long secondId);
+    @Query(value = "SELECT id FROM wallets WHERE id = :id FOR UPDATE", nativeQuery = true)
+    List<Long> lockWallet(@Param("id") long id);
 
     /**
      * Atomic conditional debit: subtract only if the balance can cover it. Returns 1 when

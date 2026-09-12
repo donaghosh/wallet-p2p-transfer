@@ -14,7 +14,6 @@ import com.paytm.wallet.mapper.TransferMapper;
 import com.paytm.wallet.repository.TransferRepository;
 import com.paytm.wallet.repository.WalletRepository;
 import com.paytm.wallet.util.HashUtil;
-import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -61,6 +60,13 @@ public class TransferServiceImpl implements TransferService {
             return replayOrConflict(existing.get(), requestHash);
         }
 
+        // Lock both wallets in ascending id order BEFORE claiming. The claim INSERT takes
+        // implicit FK key-share locks on the referenced wallet rows in unsorted (from, to)
+        // order; by holding FOR UPDATE on both rows in ascending id order first, every
+        // transaction acquires the wallet locks in the same global order — the deadlock-free
+        // guarantee for concurrent A->B and B->A transfers.
+        lockWalletsInAscendingOrder(request);
+
         // Claim the key in the same transaction as the money move.
         int claimed = transferRepository.insertClaim(
                 request.idempotencyKey(), requestHash, request.from(), request.to(), request.amountPaise());
@@ -75,27 +81,37 @@ public class TransferServiceImpl implements TransferService {
         log.info("transfer.created transfer_id={} from={} to={} amount_paise={} key={}",
                 transfer.getId(), request.from(), request.to(), request.amountPaise(),
                 request.idempotencyKey());
-        moveMoney(request, transfer);
+        applyLedger(request, transfer);
         return transferMapper.toResponse(transfer);
     }
 
     /**
-     * Applies the debit/credit under sorted wallet locks and stamps the terminal status on
-     * the (claimed) transfer row. Runs inside {@link #create}'s transaction.
+     * Locks the two wallet rows FOR UPDATE in ascending id order and validates existence.
+     * Runs before the claim INSERT so the INSERT's implicit FK key-share locks on the parent
+     * wallet rows are already held in a deterministic order.
      */
-    private void moveMoney(CreateTransferRequest request, Transfer transfer) {
+    private void lockWalletsInAscendingOrder(CreateTransferRequest request) {
         long firstId = Math.min(request.from(), request.to());
         long secondId = Math.max(request.from(), request.to());
-        List<Long> locked = walletRepository.lockWalletsInOrder(firstId, secondId);
-        if (!locked.contains(request.from())) {
+        boolean firstExists = !walletRepository.lockWallet(firstId).isEmpty();
+        boolean secondExists = !walletRepository.lockWallet(secondId).isEmpty();
+        boolean fromExists = (request.from() == firstId) ? firstExists : secondExists;
+        boolean toExists = (request.to() == firstId) ? firstExists : secondExists;
+        if (!fromExists) {
             throw new NotFoundException(
                     ErrorCode.WALLET_NOT_FOUND, "from wallet " + request.from() + " not found");
         }
-        if (!locked.contains(request.to())) {
+        if (!toExists) {
             throw new NotFoundException(
                     ErrorCode.WALLET_NOT_FOUND, "to wallet " + request.to() + " not found");
         }
+    }
 
+    /**
+     * Applies the debit/credit (both wallet rows already locked) and stamps the terminal
+     * status on the claimed transfer row. Runs inside {@link #create}'s transaction.
+     */
+    private void applyLedger(CreateTransferRequest request, Transfer transfer) {
         int debited = walletRepository.debit(request.from(), request.amountPaise());
         if (debited == 0) {
             transfer.setStatus(TransferStatus.DECLINED);
@@ -107,7 +123,7 @@ public class TransferServiceImpl implements TransferService {
         }
         walletRepository.credit(request.to(), request.amountPaise());
         transfer.setStatus(TransferStatus.SUCCEEDED);
-        metrics.transferCreated();
+        metrics.transferSucceeded();
         log.info("transfer.debited_and_credited transfer_id={} from={} to={} amount_paise={}",
                 transfer.getId(), request.from(), request.to(), request.amountPaise());
     }

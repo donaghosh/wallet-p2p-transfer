@@ -111,32 +111,37 @@ for ID in "${IDS[@]}"; do TOTAL_BEFORE=$((TOTAL_BEFORE + $(balance "$ID"))); don
 echo "wallets=${IDS[*]} total_before=$TOTAL_BEFORE"
 
 ID_CSV=$(IFS=,; echo "${IDS[*]}")
-export ID_CSV
-cons_worker() {
-  python3 - "$BASE" "$ID_CSV" <<'PY'
-import sys, json, random, urllib.request
-base, csv = sys.argv[1], sys.argv[2]
-ids = [int(x) for x in csv.split(",")]
-a, b = random.sample(ids, 2)
-amount = random.randint(1, 30000)
-body = json.dumps({"from": a, "to": b, "amount_paise": amount,
-                   "idempotency_key": "cons-" + str(random.random())}).encode()
-req = urllib.request.Request(base + "/api/v1/transfers", data=body, method="POST",
-                             headers={"Authorization": "Bearer cons", "Content-Type": "application/json"})
-try:
-    with urllib.request.urlopen(req) as r:
-        print(r.status)
-except urllib.error.HTTPError as e:
-    print(e.code)
-except Exception:
-    print("ERR")
+# Fire all transfers concurrently from one python process (thread pool) — fast, and
+# genuinely concurrent since urllib releases the GIL on network I/O. Prints "ok non2xx err".
+CONS_RESULT=$(BASE="$BASE" ID_CSV="$ID_CSV" N="$CONS_TRANSFERS" python3 <<'PY'
+import os, json, random, urllib.request, urllib.error
+from concurrent.futures import ThreadPoolExecutor
+base = os.environ["BASE"]
+ids = [int(x) for x in os.environ["ID_CSV"].split(",")]
+n = int(os.environ["N"])
+def one(i):
+    a, b = random.sample(ids, 2)
+    amount = random.randint(1, 30000)
+    body = json.dumps({"from": a, "to": b, "amount_paise": amount,
+                       "idempotency_key": "cons-%d-%s" % (i, random.random())}).encode()
+    req = urllib.request.Request(base + "/api/v1/transfers", data=body, method="POST",
+                                 headers={"Authorization": "Bearer cons", "Content-Type": "application/json"})
+    try:
+        with urllib.request.urlopen(req, timeout=30) as r:
+            return r.status
+    except urllib.error.HTTPError as e:
+        return e.code
+    except Exception:
+        return 0
+with ThreadPoolExecutor(max_workers=32) as ex:
+    codes = list(ex.map(one, range(n)))
+ok = sum(1 for c in codes if 200 <= c < 300)
+non2xx = sum(1 for c in codes if not (200 <= c < 300))
+err = sum(1 for c in codes if c == 0 or c >= 500)
+print("%d %d %d" % (ok, non2xx, err))
 PY
-}
-export -f cons_worker
-CONS_OUT="$(mktemp)"
-seq 1 "$CONS_TRANSFERS" | xargs -P32 -I{} bash -c 'cons_worker' >"$CONS_OUT"
-NON_2XX=$(grep -vc '^2' "$CONS_OUT" || true)
-SVR_ERR=$(grep -c 'ERR\|^5' "$CONS_OUT" || true)
+)
+read -r OK_CNT NON_2XX SVR_ERR <<< "$CONS_RESULT"
 TOTAL_AFTER=0
 NEG=0
 for ID in "${IDS[@]}"; do
@@ -150,7 +155,6 @@ if [ "$TOTAL_BEFORE" = "$TOTAL_AFTER" ] && [ "$NEG" = "0" ] && [ "$SVR_ERR" = "0
 else
   bad "conservation/overdraft/errors: before=$TOTAL_BEFORE after=$TOTAL_AFTER neg=$NEG 5xx=$SVR_ERR"
 fi
-rm -f "$CONS_OUT"
 
 # ---------------------------------------------------------------------------
 banner "Summary"
