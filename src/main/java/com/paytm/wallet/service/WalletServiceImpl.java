@@ -41,4 +41,18 @@ public class WalletServiceImpl implements WalletService {
                         ErrorCode.WALLET_NOT_FOUND, "Wallet " + walletId + " not found"));
         return walletMapper.toResponse(wallet);
     }
+
+    @Override
+    @Transactional
+    public WalletResponse deposit(Long walletId, long amountPaise) {
+        int credited = walletRepository.credit(walletId, amountPaise);
+        if (credited == 0) {
+            throw new NotFoundException(
+                    ErrorCode.WALLET_NOT_FOUND, "Wallet " + walletId + " not found");
+        }
+        Wallet wallet = walletRepository.findById(walletId).orElseThrow();
+        log.info("wallet.deposited wallet_id={} amount_paise={} balance_paise={}",
+                walletId, amountPaise, wallet.getBalancePaise());
+        return walletMapper.toResponse(wallet);
+    }
 }

@@ -35,10 +35,3 @@ management:
   metrics:
     tags:
       application: wallet-service
-
-# Bearer-token -> user mapping. Auth sophistication is explicitly NOT graded;
-# this is a minimal-but-real static token map, overridable via env.
-# Format: token1:user1,token2:user2
-wallet:
-  auth:
-    tokens: ${AUTH_TOKENS:tok_alice:alice,tok_bob:bob,tok_carol:carol}

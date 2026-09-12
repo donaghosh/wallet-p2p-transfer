@@ -9,4 +9,7 @@ public interface WalletService {
 
     /** Fetch a wallet by id, or throw {@code NotFoundException}. */
     WalletResponse getById(Long walletId);
+
+    /** Fund a wallet (mint). Atomic credit; throws {@code NotFoundException} if absent. */
+    WalletResponse deposit(Long walletId, long amountPaise);
 }

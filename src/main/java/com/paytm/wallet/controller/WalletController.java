@@ -1,13 +1,16 @@
 package com.paytm.wallet.controller;
 
+import com.paytm.wallet.dto.DepositRequest;
 import com.paytm.wallet.dto.WalletResponse;
 import com.paytm.wallet.service.WalletService;
 import com.paytm.wallet.util.CurrentUserContext;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -30,5 +33,15 @@ public class WalletController {
     @GetMapping("/{id}")
     public ResponseEntity<WalletResponse> getById(@PathVariable Long id) {
         return ResponseEntity.ok(walletService.getById(id));
+    }
+
+    /**
+     * Fund a wallet (mint). Not part of the minimal spec but required to make wallets usable:
+     * they are created at zero balance, so without funding every transfer would decline.
+     */
+    @PostMapping("/{id}/deposit")
+    public ResponseEntity<WalletResponse> deposit(
+            @PathVariable Long id, @Valid @RequestBody DepositRequest request) {
+        return ResponseEntity.ok(walletService.deposit(id, request.amountPaise()));
     }
 }
