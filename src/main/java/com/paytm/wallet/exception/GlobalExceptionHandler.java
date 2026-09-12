@@ -24,7 +24,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-    private static final String TRACE_ID_KEY = "traceId";
+    private static final String TRACE_ID_KEY = "correlationId";
 
     @ExceptionHandler(ApiException.class)
     public ResponseEntity<ErrorResponse> handleApi(ApiException ex, HttpServletRequest request) {

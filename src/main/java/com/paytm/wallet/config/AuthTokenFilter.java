@@ -12,6 +12,8 @@ import java.io.IOException;
 import java.time.Instant;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.MDC;
+import org.springframework.core.Ordered;
+import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
@@ -26,6 +28,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
  * Actuator endpoints are unauthenticated so health/metrics stay probeable.
  */
 @Component
+@Order(Ordered.HIGHEST_PRECEDENCE + 10)
 @RequiredArgsConstructor
 public class AuthTokenFilter extends OncePerRequestFilter {
 
@@ -69,7 +72,7 @@ public class AuthTokenFilter extends OncePerRequestFilter {
                 ErrorCode.UNAUTHORIZED.name(),
                 message,
                 request.getRequestURI(),
-                MDC.get("traceId"),
+                MDC.get(CorrelationIdFilter.MDC_KEY),
                 null);
         response.setStatus(ErrorCode.UNAUTHORIZED.httpStatus().value());
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);

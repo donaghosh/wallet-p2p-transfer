@@ -1,5 +1,6 @@
 package com.paytm.wallet.service;
 
+import com.paytm.wallet.config.DomainMetrics;
 import com.paytm.wallet.constants.DeclineReason;
 import com.paytm.wallet.constants.ErrorCode;
 import com.paytm.wallet.constants.TransferStatus;
@@ -43,6 +44,7 @@ public class TransferServiceImpl implements TransferService {
     private final TransferRepository transferRepository;
     private final WalletRepository walletRepository;
     private final TransferMapper transferMapper;
+    private final DomainMetrics metrics;
 
     @Override
     @Transactional
@@ -98,12 +100,14 @@ public class TransferServiceImpl implements TransferService {
         if (debited == 0) {
             transfer.setStatus(TransferStatus.DECLINED);
             transfer.setDeclineReason(DeclineReason.INSUFFICIENT_FUNDS.name());
+            metrics.transferDeclinedInsufficientFunds();
             log.info("transfer.declined_insufficient_funds transfer_id={} from={} amount_paise={}",
                     transfer.getId(), request.from(), request.amountPaise());
             return;
         }
         walletRepository.credit(request.to(), request.amountPaise());
         transfer.setStatus(TransferStatus.SUCCEEDED);
+        metrics.transferCreated();
         log.info("transfer.debited_and_credited transfer_id={} from={} to={} amount_paise={}",
                 transfer.getId(), request.from(), request.to(), request.amountPaise());
     }
@@ -113,6 +117,7 @@ public class TransferServiceImpl implements TransferService {
             throw new ConflictException(ErrorCode.IDEMPOTENCY_CONFLICT,
                     "Idempotency key already used with a different request body");
         }
+        metrics.idempotentReplay();
         log.info("transfer.idempotent_replay transfer_id={} key={} status={}",
                 existing.getId(), existing.getIdempotencyKey(), existing.getStatus());
         return transferMapper.toResponse(existing);
