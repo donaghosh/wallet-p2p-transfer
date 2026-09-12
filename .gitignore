@@ -1,0 +1,23 @@
+# --- Exercise materials: keep OUT of the public deliverable repo ---
+01-wallet-transfer-exercise.md
+01-wallet-transfer-RUBRIC.md
+R2-exercise-bank.pdf
+
+# --- Build output ---
+target/
+!.mvn/wrapper/maven-wrapper.jar
+
+# --- IDE ---
+.idea/
+*.iml
+.vscode/
+.settings/
+.classpath
+.project
+
+# --- OS ---
+.DS_Store
+
+# --- Local env / secrets ---
+.env
+*.local
